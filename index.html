@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0A0A0F">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>TG Mängel-Tracker</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0A0A0F;
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .glow-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 0; overflow: hidden;
+        }
+        .glow-bg::before {
+            content: ''; position: absolute; top: -20%; left: -30%;
+            width: 80vw; height: 80vw; background: radial-gradient(circle, rgba(0,229,255,0.08) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .glow-bg::after {
+            content: ''; position: absolute; bottom: -20%; right: -30%;
+            width: 70vw; height: 70vw; background: radial-gradient(circle, rgba(255,0,170,0.06) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; padding: 30px 0 20px; }
+        .header h1 {
+            font-size: 28px; font-weight: 800;
+            background: linear-gradient(90deg, #00E5FF, #FF00AA);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header p { color: #666680; font-size: 13px; margin-top: 5px; }
+        .card {
+            background: rgba(20,20,30,0.9);
+            border: 1px solid #2A2A3E;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            backdrop-filter: blur(10px);
+        }
+        .card-title {
+            font-size: 14px; font-weight: 700;
+            color: #00E5FF;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .input-group { margin-bottom: 16px; }
+        .input-group label {
+            display: block; font-size: 11px; font-weight: 600;
+            color: #A0A0B0; margin-bottom: 6px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        input, select, textarea {
+            width: 100%;
+            background: #0A0A0F;
+            border: 1px solid #2A2A3E;
+            border-radius: 10px;
+            padding: 14px 16px;
+            color: #fff;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: #00E5FF;
+            box-shadow: 0 0 0 3px rgba(0,229,255,0.15);
+        }
+        textarea { min-height: 100px; resize: vertical; }
+        select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300E5FF' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; padding-right: 40px; }
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #00E5FF, #00B8D4);
+            color: #0A0A0F;
+            box-shadow: 0 4px 20px rgba(0,229,255,0.3);
+        }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid #00E5FF;
+            color: #00E5FF;
+        }
+        .btn-small {
+            padding: 10px 16px;
+            font-size: 12px;
+            width: auto;
+            display: inline-block;
+        }
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 14px; border-radius: 20px;
+            font-size: 12px; font-weight: 600;
+        }
+        .status-ok { background: rgba(0,255,136,0.15); color: #00FF88; border: 1px solid rgba(0,255,136,0.3); }
+        .status-error { background: rgba(255,0,170,0.15); color: #FF00AA; border: 1px solid rgba(255,0,170,0.3); }
+        .status-pending { background: rgba(255,200,0,0.15); color: #FFC800; border: 1px solid rgba(255,200,0,0.3); }
+        .camera-btn {
+            width: 100%;
+            height: 140px;
+            border: 2px dashed #2A2A3E;
+            border-radius: 12px;
+            background: #0A0A0F;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #666680;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .camera-btn:active { border-color: #00E5FF; }
+        .camera-btn.has-image { border-style: solid; border-color: #00E5FF; }
+        .camera-btn img {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .camera-btn .camera-icon { font-size: 32px; margin-bottom: 8px; }
+        .camera-btn .camera-text { font-size: 13px; }
+        .hidden { display: none !important; }
+        .nav-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+        .nav-tab {
+            flex: 1;
+            padding: 12px;
+            background: rgba(20,20,30,0.9);
+            border: 1px solid #2A2A3E;
+            border-radius: 10px;
+            color: #666680;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .nav-tab.active {
+            border-color: #00E5FF;
+            color: #00E5FF;
+            background: rgba(0,229,255,0.1);
+        }
+        .toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: #14141E; border: 1px solid #00E5FF;
+            color: #00E5FF; padding: 16px 24px; border-radius: 12px;
+            font-size: 14px; font-weight: 600;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            white-space: nowrap;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.error { border-color: #FF00AA; color: #FF00AA; }
+        .loading {
+            display: inline-block; width: 16px; height: 16px;
+            border: 2px solid rgba(0,229,255,0.3);
+            border-top-color: #00E5FF;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .section { display: none; }
+        .section.active { display: block; }
+        .success-check {
+            width: 60px; height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00FF88, #00E5FF);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 28px;
+        }
+        .error-detail {
+            color: #FF00AA;
+            font-size: 11px;
+            margin-top: 8px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="glow-bg"></div>
+    <div class="app">
+        <div class="header">
+            <h1>TG MÄNGEL</h1>
+            <p>Schnelle Mängelerfassung vor Ort</p>
+        </div>
+
+        <div class="nav-tabs">
+            <div class="nav-tab active" onclick="showSection('form')">📝 NEUER MANGEL</div>
+            <div class="nav-tab" onclick="showSection('settings')">⚙ EINSTELLUNGEN</div>
+        </div>
+
+        <!-- FORM SECTION -->
+        <div id="section-form" class="section active">
+            <div class="card">
+                <div class="card-title">Mangel erfassen</div>
+
+                <div class="input-group">
+                    <label>Projektname</label>
+                    <input type="text" id="projectName" placeholder="z.B. Neubau Musterstraße">
+                </div>
+
+                <div class="input-group">
+                    <label>Titel des Mangels *</label>
+                    <input type="text" id="title" placeholder="z.B. Riss im Putz">
+                </div>
+
+                <div class="input-group">
+                    <label>Beschreibung</label>
+                    <textarea id="description" placeholder="Genaue Beschreibung des Mangels..."></textarea>
+                </div>
+
+                <div class="input-group">
+                    <label>Kategorie</label>
+                    <select id="category">
+                        <option value="Riss">Riss</option>
+                        <option value="Feuchtigkeit">Feuchtigkeit</option>
+                        <option value="Putz">Putz</option>
+                        <option value="Elektro">Elektro</option>
+                        <option value="Sanitär">Sanitär</option>
+                        <option value="Sonstiges">Sonstiges</option>
+                    </select>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="input-group">
+                        <label>Priorität</label>
+                        <select id="priority">
+                            <option value="Hoch">🔴 Hoch</option>
+                            <option value="Mittel" selected>🟡 Mittel</option>
+                            <option value="Niedrig">🟢 Niedrig</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Frist</label>
+                        <input type="date" id="deadline">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Foto</label>
+                    <div class="camera-btn" id="cameraBtn" onclick="document.getElementById('photoInput').click()">
+                        <span class="camera-icon">📷</span>
+                        <span class="camera-text">Foto aufnehmen</span>
+                    </div>
+                    <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)">
+                </div>
+
+                <button class="btn btn-primary" id="submitBtn" onclick="submitMangel()">
+                    MANGEL ABSENDEN
+                </button>
+            </div>
+
+            <div id="successCard" class="card hidden" style="text-align: center; padding: 40px 20px;">
+                <div class="success-check">✓</div>
+                <h2 style="font-size: 20px; margin-bottom: 10px;">Mangel gespeichert!</h2>
+                <p style="color: #666680; margin-bottom: 25px;">Der Mangel wurde erfolgreich in SeaTable erfasst.</p>
+                <button class="btn btn-secondary" onclick="resetForm()">WEITEREN MANGEL ERFASSEN</button>
+            </div>
+        </div>
+
+        <!-- SETTINGS SECTION -->
+        <div id="section-settings" class="section">
+            <div class="card">
+                <div class="card-title">SeaTable Verbindung</div>
+
+                <div class="input-group">
+                    <label>Server-URL</label>
+                    <input type="text" id="serverUrl" value="https://cloud.seatable.io" placeholder="https://cloud.seatable.io">
+                </div>
+
+                <div class="input-group">
+                    <label>API Token (Base-Token)</label>
+                    <input type="password" id="apiToken" placeholder="0a1b2c3d...">
+                </div>
+
+                <div class="input-group">
+                    <label>Tabellen-Name</label>
+                    <input type="text" id="tableName" value="Mängel" placeholder="Mängel">
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <div id="connStatus" class="status-badge status-pending">
+                        <span class="loading"></span> Nicht verbunden
+                    </div>
+                </div>
+                <div id="connError" class="error-detail hidden"></div>
+
+                <button class="btn btn-secondary btn-small" onclick="testConnection()" style="margin-bottom: 10px;">
+                    VERBINDUNG TESTEN
+                </button>
+                <button class="btn btn-primary" onclick="saveSettings()">
+                    EINSTELLUNGEN SPEICHERN
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Info</div>
+                <p style="color: #666680; font-size: 13px; line-height: 1.6;">
+                    <strong style="color: #A0A0B0;">Wo finde ich die Daten?</strong><br><br>
+                    <strong>API Token:</strong><br>
+                    In SeaTable: Base öffnen → oben rechts auf den Namen → <strong>Erweitert</strong> → <strong>API-Token</strong><br>
+                    Dort einen Token mit <code style="background:#0A0A0F;padding:2px 6px;border-radius:4px;">read/write</code> erstellen.<br><br>
+                    <strong>Server-URL:</strong><br>
+                    Cloud: <code style="background:#0A0A0F;padding:2px 6px;border-radius:4px;">https://cloud.seatable.io</code><br>
+                    Self-hosted: deine eigene Server-Adresse.<br><br>
+                    <strong>Tabellen-Name:</strong><br>
+                    Der Name deiner Tabelle in der Base (z.B. Mängel).
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        let settings = JSON.parse(localStorage.getItem('tgSettings') || '{}');
+        if (settings.apiToken) document.getElementById('apiToken').value = settings.apiToken;
+        if (settings.serverUrl) document.getElementById('serverUrl').value = settings.serverUrl;
+        if (settings.tableName) document.getElementById('tableName').value = settings.tableName;
+
+        const today = new Date();
+        today.setDate(today.getDate() + 14);
+        document.getElementById('deadline').value = today.toISOString().split('T')[0];
+
+        function showSection(name) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('section-' + name).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function showToast(msg, isError) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast' + (isError ? ' error' : '');
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function handlePhoto(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const btn = document.getElementById('cameraBtn');
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                btn.innerHTML = '<img src="' + ev.target.result + '">';
+                btn.classList.add('has-image');
+                btn.dataset.photo = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ── SeaTable: hole temporären Access-Token + dtable_uuid ──
+        async function getSeaTableAccess(server, apiToken) {
+            const res = await fetch(server.replace(/\/$/, '') + '/api/v2.1/dtable/app-access-token/', {
+                headers: { 'Authorization': 'Token ' + apiToken }
+            });
+            if (!res.ok) {
+                const e = await res.json().catch(() => ({}));
+                throw new Error(e.error_msg || e.detail || ('HTTP ' + res.status));
+            }
+            const data = await res.json();
+            return { accessToken: data.access_token, dtableUuid: data.dtable_uuid, dtableServer: data.dtable_server };
+        }
+
+        async function testConnection() {
+            const server = document.getElementById('serverUrl').value.trim() || 'https://cloud.seatable.io';
+            const token = document.getElementById('apiToken').value.trim();
+            const status = document.getElementById('connStatus');
+            const errorDiv = document.getElementById('connError');
+
+            errorDiv.classList.add('hidden');
+            errorDiv.textContent = '';
+
+            if (!token) {
+                status.className = 'status-badge status-error';
+                status.innerHTML = '❌ API Token benötigt';
+                return;
+            }
+
+            status.className = 'status-badge status-pending';
+            status.innerHTML = '<span class="loading"></span> Teste...';
+
+            try {
+                const access = await getSeaTableAccess(server, token);
+                if (access.accessToken && access.dtableUuid) {
+                    status.className = 'status-badge status-ok';
+                    status.innerHTML = '✓ Verbindung OK';
+                    showToast('Verbindung erfolgreich!');
+                } else {
+                    throw new Error('Kein Access-Token erhalten');
+                }
+            } catch (err) {
+                status.className = 'status-badge status-error';
+                status.innerHTML = '❌ Verbindung fehlgeschlagen';
+                errorDiv.textContent = 'Fehler: ' + err.message;
+                errorDiv.classList.remove('hidden');
+                showToast('Verbindung fehlgeschlagen', true);
+            }
+        }
+
+        function saveSettings() {
+            settings = {
+                apiToken: document.getElementById('apiToken').value.trim(),
+                serverUrl: document.getElementById('serverUrl').value.trim() || 'https://cloud.seatable.io',
+                tableName: document.getElementById('tableName').value.trim() || 'Mängel'
+            };
+            localStorage.setItem('tgSettings', JSON.stringify(settings));
+            showToast('Einstellungen gespeichert!');
+        }
+
+        async function submitMangel() {
+            const btn = document.getElementById('submitBtn');
+            const title = document.getElementById('title').value.trim();
+            const projectName = document.getElementById('projectName').value.trim();
+
+            if (!title) {
+                showToast('Bitte einen Titel eingeben', true);
+                return;
+            }
+
+            if (!settings.apiToken || !settings.serverUrl) {
+                showToast('Bitte zuerst SeaTable in Einstellungen verbinden', true);
+                showSection('settings');
+                return;
+            }
+
+            btn.innerHTML = '<span class="loading"></span> Wird gesendet...';
+            btn.disabled = true;
+
+            const row = {
+                Titel: title,
+                Beschreibung: document.getElementById('description').value.trim(),
+                Kategorie: document.getElementById('category').value,
+                'Priorität': document.getElementById('priority').value,
+                Status: 'Offen',
+                Frist: document.getElementById('deadline').value,
+                Projektname: projectName || 'Unbekannt'
+            };
+
+            try {
+                // 1) Access-Token + dtable_uuid holen
+                const access = await getSeaTableAccess(settings.serverUrl, settings.apiToken);
+                const base = (access.dtableServer || settings.serverUrl).replace(/\/$/, '');
+
+                // 2) Zeile einfügen
+                const res = await fetch(base + '/api-gateway/api/v2/dtables/' + access.dtableUuid + '/rows/', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + access.accessToken,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        table_name: settings.tableName,
+                        rows: [ row ]
+                    })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error_message || err.error_msg || ('SeaTable Fehler ' + res.status));
+                }
+
+                // Foto: SeaTable benötigt einen separaten Datei-Upload-Link.
+                // Das Foto bleibt vorerst lokal im Formular gespeichert.
+                const photoData = document.getElementById('cameraBtn').dataset.photo;
+                if (photoData) {
+                    console.log('Foto erfasst – Upload zu SeaTable erfordert separaten Datei-Endpoint.');
+                }
+
+                document.getElementById('section-form').querySelector('.card').classList.add('hidden');
+                document.getElementById('successCard').classList.remove('hidden');
+                showToast('Mangel erfolgreich gespeichert!');
+
+            } catch (err) {
+                showToast('Fehler: ' + err.message, true);
+                btn.innerHTML = 'MANGEL ABSENDEN';
+                btn.disabled = false;
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('title').value = '';
+            document.getElementById('description').value = '';
+            document.getElementById('category').selectedIndex = 0;
+            document.getElementById('priority').selectedIndex = 1;
+            document.getElementById('projectName').value = '';
+
+            const btn = document.getElementById('cameraBtn');
+            btn.innerHTML = '<span class="camera-icon">📷</span><span class="camera-text">Foto aufnehmen</span>';
+            btn.classList.remove('has-image');
+            delete btn.dataset.photo;
+            document.getElementById('photoInput').value = '';
+
+            const today = new Date();
+            today.setDate(today.getDate() + 14);
+            document.getElementById('deadline').value = today.toISOString().split('T')[0];
+
+            document.getElementById('successCard').classList.add('hidden');
+            document.getElementById('section-form').querySelector('.card').classList.remove('hidden');
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.innerHTML = 'MANGEL ABSENDEN';
+            submitBtn.disabled = false;
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
+    </script>
+</body>
+</html>
